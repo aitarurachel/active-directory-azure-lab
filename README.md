@@ -20,7 +20,7 @@ This lab had three explicit goals:
 
 1. **Demonstrate end-to-end Active Directory competence** 
 2. **Practice the most common Tier-1/Tier-2 IT operations tasks**
-3. **Build it in Azure on a pay-as-you-go subscription**
+3. **Build it in Azure**
 
 ---
 
