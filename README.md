@@ -10,7 +10,7 @@
 
 ---
 
-## 🎥 [watch the live demo](https)
+## 🎥 [watch the live demo](https://www.loom.com/share/449f56fb5c4742b6924f0873069e79ad)
 
 ---
 
@@ -129,32 +129,6 @@ graph LR
     class Admin ext
 ```
 
-### Authentication Flow
-
-What happens when a domain-joined user logs in — the reason the DC exists in the first place:
-
-```mermaid
-sequenceDiagram
-    participant U as User<br/>(alice.chen)
-    participant W as Workstation<br/>(domain-joined)
-    participant DC as Domain Controller<br/>(lab.local)
-    participant R as Resource<br/>(file share, app, etc.)
-
-    U->>W: Enter alice.chen / password
-    W->>DC: Kerberos AS-REQ (request TGT)
-    DC->>DC: Validate credentials<br/>against AD database
-    DC-->>W: AS-REP (TGT + session key)
-    Note over W: User is now logged in.<br/>TGT cached for resource requests.
-
-    U->>W: Open \\fileserver\finance
-    W->>DC: TGS-REQ (need ticket for fileserver)
-    DC->>DC: Check group membership<br/>(is alice in Finance_Users?)
-    DC-->>W: TGS-REP (service ticket)
-    W->>R: Present service ticket
-    R->>R: Validate ticket,<br/>check ACL
-    R-->>U: Access granted (or denied)
-```
-
 ---
 
 ## Tech Stack and Why
@@ -182,7 +156,7 @@ This lab builds a complete single-forest Active Directory environment from a bar
 3. **Promote to Domain Controller.** Create a new forest (`lab.local`), install AD-integrated DNS, and become the authoritative identity server for the domain.
 4. **Build the organizational structure.** Create departmental OUs (IT, Finance, HR, Sales, Computers), role-based security groups, and four test user accounts, all scripted in PowerShell to demonstrate reproducible identity provisioning.
 5. **Author and apply Group Policy.** Create an `IT Security Policy` GPO enforcing 12-character passwords, 15-minute screen lock, and USB storage restrictions. Link it to the IT OU to demonstrate scoped policy application.
-6. **Practice help-desk operations.** Execute the canonical Tier-1/Tier-2 tasks — password resets, account unlocks, employee offboarding, inactive-account audit queries — using PowerShell.
+6. **Practice help-desk operations.** Execute the canonical Tier-1/Tier-2 tasks; password resets, account unlocks, employee offboarding, inactive-account audit queries using PowerShell.
 
 ---
 
@@ -264,7 +238,7 @@ AD-integrated DNS installed during promotion running on the same VM as AD DS. Th
 
 ### Decision 5: Public IP with RDP exposed, source-IP-restricted via NSG
 
-The DC has a public IP and RDP/3389 is opened only from my home IP. Any internet-exposed RDP endpoint is part of the global attack surface, but source-IP restriction reduces exposure by ~99.99% versus an `Any` rule. The lab is short-lived, and there's no production data at risk. **In production (and the subject of a planned follow-up lab):** replace with Azure Bastion, browser-based RDP/SSH over TLS, no public IP on the workload VM, integrates with Entra ID authentication. Bastion's ~$140/month cost is why it isn't here.
+The DC has a public IP and RDP/3389 is opened only from my home IP. Any internet-exposed RDP endpoint is part of the global attack surface, but source-IP restriction reduces exposure by ~99.99% versus an `Any` rule. The lab is short-lived, and there's no production data at risk. **In production:** replace with Azure Bastion, browser-based RDP/SSH over TLS, no public IP on the workload VM, integrates with Entra ID authentication. 
 
 ### Decision 6: Single OU-per-department layout
 
@@ -272,7 +246,7 @@ Five flat OUs at the domain root: `IT`, `Finance`, `HR`, `Sales`, `Computers`. F
 
 ### Decision 7: GPO scoped to `IT` OU only
 
-The `IT Security Policy` GPO is linked only to the `IT` OU. In a real environment those password and screen-lock policies should apply to everyone. Scoping narrowly here demonstrates the *linking* mechanic explicitly — policy applied to one OU doesn't bleed into siblings. In production: link a baseline security GPO at the domain root, then layer department-specific GPOs at the OU level.
+The `IT Security Policy` GPO is linked only to the `IT` OU. In a real environment, those password and screen-lock policies should apply to everyone. Scoping narrowly here demonstrates the *linking* mechanic explicitly; policy applied to one OU doesn't bleed into siblings. In production: link a baseline security GPO at the domain root, then layer department-specific GPOs at the OU level.
 
 ---
 
@@ -306,7 +280,6 @@ If I were building this for an actual organization rather than a portfolio lab, 
 - Active Directory forest design, OU architecture, role-based access via security groups
 - Group Policy authoring, linking, and inheritance
 - PowerShell automation for identity lifecycle (`ActiveDirectory` and `GroupPolicy` modules)
-- Kerberos authentication flow and AD-integrated DNS
 - Help-desk operations: password reset, account unlock, offboarding, audit reporting
 - Production-vs-lab trade-off analysis
 
