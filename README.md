@@ -147,16 +147,122 @@ graph LR
 
 ---
 
-## Steps
+## Step-by-step Instructions
 
 This lab builds a complete single-forest Active Directory environment from a bare Windows Server 2025 VM in Azure. Concretely, the build proceeds through six phases:
 
 1. **Provision the VM.** Deploy a Windows Server 2025 Datacenter VM into a dedicated resource group, with NSG rules restricting RDP to a single source IP.
+    - Go to azure.microsoft.com/free and create a free account
+    - Sign in to portal.azure.com
+    - Search for Virtual machines and click Create
+    - Fill in the configuration 
+    - Click Review + Create, then Create
+
 2. **Install AD DS and GPMC roles.** Add Active Directory Domain Services and the Group Policy Management Console as Windows Server roles, both via PowerShell, with the GUI as backup.
+    - In Server Manager, click Manage → Add Roles and Features.
+    - Click Next through the wizard until you reach Server Roles.
+    - Check Active Directory Domain Services. When prompted, click Add Features to include the management tools.
+    - Click Next through the remaining pages
+    - click Install. Wait for the installation to complete
+    - When complete, click Close — do not restart yet.
+
+    **install Group Policy Management Console (GPMC)**
+    ```powershell
+    # Run this in PowerShell immediately after installing AD DS
+    Install-WindowsFeature -Name GPMC
+    # Wait for it to complete, then close and reopen Server Manager
+    ```
+
 3. **Promote to Domain Controller.** Create a new forest (`lab.local`), install AD-integrated DNS, and become the authoritative identity server for the domain.
+    - In Server Manager, click the yellow warning flag at the top right
+    - Click Promote this server to a domain controller
+    - Select Add a new forest
+    - Set Root domain name to: lab.local
+    - Click Next — set a DSRM password (write it down — needed for disaster recovery only)
+    - Click through DNS Options and NetBIOS pages — accept the defaults
+    - Click Install — the server will automatically restart when complete
+
 4. **Build the organizational structure.** Create departmental OUs (IT, Finance, HR, Sales, Computers), role-based security groups, and four test user accounts, all scripted in PowerShell to demonstrate reproducible identity provisioning.
-5. **Author and apply Group Policy.** Create an `IT Security Policy` GPO enforcing 12-character passwords, 15-minute screen lock, and USB storage restrictions. Link it to the IT OU to demonstrate scoped policy application.
-6. **Practice help-desk operations.** Execute the canonical Tier-1/Tier-2 tasks; password resets, account unlocks, employee offboarding, inactive-account audit queries using PowerShell.
+
+    **Create Organisational Units**
+    - Right-click your domain (lab.local) in ADUC → New → Organizational Unit.
+   
+    **Create Security Groups**
+    - Right-click each OU → New → Group. Set Group scope to Global and Group type to Security.
+      
+    **Create User Accounts**
+   ```powershell
+    # IMPORTANT: Run this entire block together — not line by line
+ 
+    # Step 1 — define the password variable first
+    $password = ConvertTo-SecureString "Welcome@2026!" -AsPlainText -Force
+ 
+    # Step 2 — create all 4 users (Name parameter is required)
+    New-ADUser -Name "alice.chen" -GivenName "Alice" -Surname "Chen" `
+      -SamAccountName "alice.chen" -UserPrincipalName "alice.chen@lab.local" `
+      -Path "OU=IT,DC=lab,DC=local" -AccountPassword $password -Enabled $true
+ 
+    New-ADUser -Name "bob.patel" -GivenName "Bob" -Surname "Patel" `
+      -SamAccountName "bob.patel" -UserPrincipalName "bob.patel@lab.local" `
+      -Path "OU=Finance,DC=lab,DC=local" -AccountPassword $password -Enabled $true
+ 
+    New-ADUser -Name "carol.jones" -GivenName "Carol" -Surname "Jones" `
+      -SamAccountName "carol.jones" -UserPrincipalName "carol.jones@lab.local" `
+      -Path "OU=HR,DC=lab,DC=local" -AccountPassword $password -Enabled $true
+ 
+    New-ADUser -Name "david.smith" -GivenName "David" -Surname "Smith" `
+      -SamAccountName "david.smith" -UserPrincipalName "david.smith@lab.local" `
+      -Path "OU=Sales,DC=lab,DC=local" -AccountPassword $password -Enabled $true
+ 
+    # Step 3 — add each user to their department group
+    Add-ADGroupMember -Identity "IT_Admins"     -Members "alice.chen"
+    Add-ADGroupMember -Identity "Finance_Users" -Members "bob.patel"
+    Add-ADGroupMember -Identity "HR_Users"      -Members "carol.jones"
+    Add-ADGroupMember -Identity "Sales_Users"   -Members "david.smith"
+    ```
+
+6. **Author and apply Group Policy.** Create an `IT Security Policy` GPO enforcing 12-character passwords, 15-minute screen lock, and USB storage restrictions. Link it to the IT OU to demonstrate scoped policy application.
+    - Expand Forest: lab.local → Domains → lab.local in Group Policy Management
+    - Right-click the IT OU → Create a GPO in this domain and link it here
+    - Name it: IT Security Policy 
+    - Right-click the new GPO → Edit
+  
+    **Minimum password length:** Computer Config → Windows Settings → Security → Account Policies → Password Policy
+
+   **Password must meet complexity requirements:** Computer Config → Windows Settings → Security → Account Policies → Password Policy
+
+   **Interactive logon: Machine inactivity limit:** Computer Config → Windows Settings → Security → Local Policies → Security Options
+
+   **All removable storage classes: Deny all access:** Computer Config → Administrative Templates → System → Removable Storage Access
+
+
+
+7. **Practice help-desk operations.** Execute the canonical Tier-1/Tier-2 tasks; password resets, account unlocks, employee offboarding, inactive-account audit queries using PowerShell.
+
+   **Reset a password**
+   ```powershell
+    # Reset a password and force change on next login
+    Set-ADAccountPassword -Identity "bob.patel" -Reset -NewPassword (ConvertTo-SecureString "NewPass@2026!" -AsPlainText -Force)
+    Set-ADUser -Identity "bob.patel" -ChangePasswordAtLogon $true
+
+    ```
+
+   **Unlock a locked account**
+   ```powershell
+    # Unlock a locked account
+    Unlock-ADAccount -Identity "carol.jones"
+
+    ```
+   
+    **Disable an account (employee offboarding)**
+   ```powershell
+    # Disable an account
+    Disable-ADAccount -Identity "david.smith"
+ 
+    # Find all currently disabled accounts
+    Search-ADAccount -AccountDisabled | Select-Object Name, SamAccountName
+
+    ```
 
 ---
 
